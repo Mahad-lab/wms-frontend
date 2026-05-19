@@ -6,6 +6,7 @@ import { Clients } from './pages/Clients';
 import { Items } from './pages/Items';
 import { OrderHistory } from './pages/OrderHistory';
 import { ClientLedger } from './pages/ClientLedger';
+import { Payments } from './pages/Payments';
 
 function AppContent() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -33,6 +34,7 @@ function AppContent() {
         <Link to="/clients" className="text-blue-600">Clients</Link>
         <Link to="/items" className="text-blue-600">Items</Link>
         <Link to="/orders" className="text-blue-600">Orders</Link>
+        <Link to="/payments" className="text-blue-600">Payments</Link>
         <button onClick={handleLogout} className="ml-auto text-red-600">Logout</button>
       </nav>
 
@@ -42,6 +44,7 @@ function AppContent() {
         <Route path="/items" element={<Items />} />
         <Route path="/orders" element={<OrderHistory />} />
         <Route path="/ledger/:id" element={<ClientLedger />} />
+        <Route path="/payments" element={<Payments />} />
       </Routes>
     </div>
   );

@@ -29,9 +29,19 @@ export function NewOrder() {
 
   useEffect(() => {
     if (!clientId) return;
-    api.getClientLedger(clientId).then(ledger => {
-      const last = ledger.at(-1);
-      setOldBalance(last?.balance_due ?? 0);
+    api.getClientLedger(clientId).then((data: any) => {
+      const orders = data.orders || [];
+      const payments = data.payments || [];
+      const lastOrder = orders.at(-1);
+      if (!lastOrder) {
+        setOldBalance(0);
+        return;
+      }
+      const lastOrderTime = lastOrder.created_at || '';
+      const paymentsAfter = payments
+        .filter((p: any) => p.created_at > lastOrderTime)
+        .reduce((s: number, p: any) => s + p.amount, 0);
+      setOldBalance(lastOrder.balance_due - paymentsAfter);
     });
   }, [clientId]);
 
