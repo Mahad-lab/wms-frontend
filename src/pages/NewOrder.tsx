@@ -100,9 +100,14 @@ export function NewOrder() {
   };
 
   const filteredItems = (line: typeof lines[0]) => {
-    if (!line.category) return items;
+    if (!line.category) {
+      const usedItems = lines.filter(l => l.id !== line.id && l.item_name).map(l => l.item_name);
+      return items.filter(i => !usedItems.includes(i.name));
+    }
     const cat = categories.find(c => c.name === line.category);
-    return items.filter(i => i.category_id === cat?.id);
+    const categoryItems = items.filter(i => i.category_id === cat?.id);
+    const usedItems = lines.filter(l => l.id !== line.id && l.item_name).map(l => l.item_name);
+    return categoryItems.filter(i => !usedItems.includes(i.name));
   };
 
   return (

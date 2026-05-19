@@ -20,9 +20,22 @@ export function Items() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (form.id) {
-      // Edit - would need update API
-      // For now just show alert
-      alert('Edit functionality - implement PUT endpoint');
+      fetch(`/api/items/${form.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          name: form.name,
+          category_id: form.category_id || null,
+          default_unit: form.default_unit,
+        })
+      }).then(() => {
+        setForm({ id: 0, name: '', category_id: 0, default_unit: 'kg' });
+        setShowForm(false);
+        loadData();
+      });
     } else {
       api.createItem({
         name: form.name,
@@ -104,7 +117,7 @@ export function Items() {
       )}
 
       <div style={{ display: 'grid', gap: '8px' }}>
-        {items.map(i => (
+        {form.id ? null : items.map(i => (
           <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '12px', borderRadius: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
             <div>
               <div style={{ fontWeight: '500' }}>{i.name}</div>

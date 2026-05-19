@@ -41,7 +41,7 @@ export function Clients() {
         <h1 className="text-2xl font-bold">Clients</h1>
         <button onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ name: '', phone: '', address: '' }); }}
           className="bg-blue-600 text-white px-4 py-2 rounded">
-          {showForm ? 'Cancel' : '+ Add Client'}
+          {editingId ? 'Cancel Edit' : (showForm ? 'Cancel' : '+ Add Client')}
         </button>
       </div>
 
@@ -75,11 +75,12 @@ export function Clients() {
       )}
 
       <div className="space-y-2">
-        {clients.map(c => (
+        {editingId ? null : clients.map(c => (
           <div key={c.id} className="flex justify-between items-center bg-white p-3 rounded shadow-sm">
             <div>
               <div className="font-medium">{c.name}</div>
               {c.phone && <div className="text-sm text-gray-500">{c.phone}</div>}
+              {c.address && <div className="text-sm text-gray-500">{c.address}</div>}
             </div>
             <div className="text-right">
               <div className={`font-bold ${(c.current_balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
