@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { NewOrder } from './pages/NewOrder';
 import { Clients } from './pages/Clients';
@@ -10,7 +10,6 @@ import { Payments } from './pages/Payments';
 
 function AppContent() {
   const [loggedIn, setLoggedIn] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
