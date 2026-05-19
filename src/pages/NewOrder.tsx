@@ -221,6 +221,12 @@ export function NewOrder() {
           <span>Balance Due:</span>
           <span>₹{balanceDue.toFixed(1)}</span>
         </div>
+        <textarea
+          placeholder="Notes (optional)"
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '16px', minHeight: '60px' }}
+        />
         <button
           onClick={handleSubmit}
           style={{ background: '#16a34a', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px' }}
