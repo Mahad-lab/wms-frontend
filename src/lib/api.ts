@@ -31,6 +31,13 @@ export const api = {
 
   getItems: () => req<Item[]>('/api/items'),
   getCategories: () => req<Category[]>('/api/items/categories'),
+  createCategory: (b: { name: string }) =>
+    req<Category>('/api/items/categories', { method: 'POST', body: JSON.stringify(b) }),
+  updateCategory: (id: number, b: { name: string }) =>
+    req(`/api/items/categories/${id}`, { method: 'PUT', body: JSON.stringify(b) }),
+  deleteCategory: (id: number) =>
+    req(`/api/items/categories/${id}`, { method: 'DELETE' }),
+
   createItem: (b: { name: string; category_id?: number; default_unit?: string }) =>
     req<Item>('/api/items', { method: 'POST', body: JSON.stringify(b) }),
 
