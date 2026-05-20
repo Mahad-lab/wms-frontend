@@ -16,6 +16,8 @@ export function NewOrder() {
   const [loading, setLoading] = useState(true);
 
   const [clientId, setClientId] = useState<number | null>(null);
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientList, setShowClientList] = useState(false);
   const [orderDate, setOrderDate] = useState(today());
   const [lines, setLines] = useState([{ item_name: '', category: '', rate: 0, weight: 0, unit: 'kg', id: 1 }]);
   const [paid, setPaid] = useState(0);
@@ -37,9 +39,20 @@ export function NewOrder() {
     }).finally(() => setLoading(false));
   }, []);
 
+  const filteredClients = clients.filter(c =>
+    c.name.toLowerCase().includes(clientSearch.toLowerCase())
+  );
+
+  const handleSelectClient = (client: Client) => {
+    setClientId(client.id);
+    setClientSearch(client.name);
+    setShowClientList(false);
+  };
+
   useEffect(() => {
-    if (!clientId) return;
-    api.getClientLedger(clientId).then((data: any) => {
+    if (clientSearch === '' && clientId === null) return;
+    if (clientSearch === '') { setClientId(null); return; }
+    api.getClientLedger(clientId!).then((data: any) => {
       const orders = data.orders || [];
       const payments = data.payments || [];
       const lastOrder = orders.at(-1);
@@ -88,12 +101,23 @@ export function NewOrder() {
       });
       setSavedOrder(order);
       toast.success('Order created successfully');
+      resetForm();
     } catch (e) {
       toast.error('Failed to create order');
     } finally {
       setSubmitting(false);
     }
   }
+
+  const resetForm = () => {
+    setClientId(null);
+    setClientSearch('');
+    setOrderDate(today());
+    setLines([{ item_name: '', category: '', rate: 0, weight: 0, unit: 'kg', id: 1 }]);
+    setPaid(0);
+    setOldBalance(0);
+    setNotes('');
+  };
 
   const handleLineChange = (id: number, field: string, value: string) => {
     setLines(lines.map(l => {
@@ -147,16 +171,34 @@ export function NewOrder() {
       <h1 className="text-2xl font-bold mb-4">New Order</h1>
 
       <div className="flex gap-4 mb-4 flex-wrap">
-        <select
-          value={clientId ?? ''}
-          onChange={e => setClientId(Number(e.target.value) || null)}
-          className="border p-2 rounded flex-1 min-w-[150px]"
-        >
-          <option value="">Select Client</option>
-          {clients.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <div className="relative flex-1 min-w-[150px]">
+          <input
+            type="text"
+            placeholder="Search client..."
+            value={clientSearch}
+            onChange={e => { setClientSearch(e.target.value); setShowClientList(true); }}
+            onFocus={() => setShowClientList(true)}
+            className="border p-2 rounded w-full"
+          />
+          {showClientList && (clientSearch || filteredClients.length > 0) && (
+            <div className="absolute top-full left-0 right-0 bg-white border rounded shadow-md max-h-48 overflow-y-auto z-10 mt-1">
+              {filteredClients.length === 0 ? (
+                <div className="p-2 text-gray-500">No clients found</div>
+              ) : (
+                filteredClients.map(c => (
+                  <div
+                    key={c.id}
+                    onClick={() => handleSelectClient(c)}
+                    className="p-2 hover:bg-gray-100 cursor-pointer"
+                  >
+                    {c.name}
+                    {c.phone && <span className="text-gray-400 text-sm ml-2">{c.phone}</span>}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
         <input
           type="date"
           value={orderDate}
