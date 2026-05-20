@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import type { Client, Item, Category, Order } from '../types';
 import { BillPreview } from '../components/BillPreview';
+import { Spinner } from '../components/ui/spinner';
+import { toast } from 'sonner';
 
 function today() {
   return new Date().toISOString().split('T')[0];
@@ -11,6 +13,7 @@ export function NewOrder() {
   const [clients, setClients] = useState<Client[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [clientId, setClientId] = useState<number | null>(null);
   const [orderDate, setOrderDate] = useState(today());
@@ -20,11 +23,18 @@ export function NewOrder() {
   const [notes, setNotes] = useState('');
 
   const [savedOrder, setSavedOrder] = useState<Order | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api.getClients().then(setClients);
-    api.getItems().then(setItems);
-    api.getCategories().then(setCategories);
+    Promise.all([
+      api.getClients(),
+      api.getItems(),
+      api.getCategories()
+    ]).then(([clientsData, itemsData, categoriesData]) => {
+      setClients(clientsData);
+      setItems(itemsData);
+      setCategories(categoriesData);
+    }).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -50,25 +60,39 @@ export function NewOrder() {
   const balanceDue = grandTotal - paid;
 
   async function handleSubmit() {
-    if (!clientId) return alert('Select a client');
+    if (!clientId) {
+      toast.error('Please select a client');
+      return;
+    }
     const validLines = lines.filter(l => l.item_name && l.weight > 0);
-    if (validLines.length === 0) return alert('Add at least one item');
+    if (validLines.length === 0) {
+      toast.error('Please add at least one item');
+      return;
+    }
 
-    const order = await api.createOrder({
-      client_id: clientId,
-      order_date: orderDate,
-      paid,
-      notes: notes || undefined,
-      lines: validLines.map((l, i) => ({
-        item_name: l.item_name,
-        category: l.category,
-        rate: Number(l.rate),
-        weight: Number(l.weight),
-        unit: l.unit,
-        sort_order: i,
-      })),
-    });
-    setSavedOrder(order);
+    setSubmitting(true);
+    try {
+      const order = await api.createOrder({
+        client_id: clientId,
+        order_date: orderDate,
+        paid,
+        notes: notes || undefined,
+        lines: validLines.map((l, i) => ({
+          item_name: l.item_name,
+          category: l.category,
+          rate: Number(l.rate),
+          weight: Number(l.weight),
+          unit: l.unit,
+          sort_order: i,
+        })),
+      });
+      setSavedOrder(order);
+      toast.success('Order created successfully');
+    } catch (e) {
+      toast.error('Failed to create order');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const handleLineChange = (id: number, field: string, value: string) => {
@@ -110,15 +134,23 @@ export function NewOrder() {
     return categoryItems.filter(i => !usedItems.includes(i.name));
   };
 
+  if (loading) {
+    return (
+      <div className="p-4 max-w-4xl mx-auto flex justify-center py-12">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">New Order</h1>
 
-      <div className="flex gap-4 mb-4">
+      <div className="flex gap-4 mb-4 flex-wrap">
         <select
           value={clientId ?? ''}
           onChange={e => setClientId(Number(e.target.value) || null)}
-          style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', flex: 1 }}
+          className="border p-2 rounded flex-1 min-w-[150px]"
         >
           <option value="">Select Client</option>
           {clients.map(c => (
@@ -129,23 +161,23 @@ export function NewOrder() {
           type="date"
           value={orderDate}
           onChange={e => setOrderDate(e.target.value)}
-          style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+          className="border p-2 rounded"
         />
       </div>
 
       {oldBalance > 0 && (
-        <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>
+        <div className="bg-amber-50 p-3 rounded mb-4">
           Old Balance: <strong>₹{oldBalance.toFixed(1)}</strong>
         </div>
       )}
 
-      <div style={{ marginBottom: '16px' }}>
+      <div className="mb-4">
         {lines.map(line => (
-          <div key={line.id} style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div key={line.id} className="flex gap-2 mb-2 flex-wrap items-center">
             <select
               value={line.category}
               onChange={e => handleLineChange(line.id, 'category', e.target.value)}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', minWidth: '100px' }}
+              className="border p-2 rounded min-w-[100px]"
             >
               <option value="">Category</option>
               {categories.map(c => (
@@ -156,7 +188,7 @@ export function NewOrder() {
             <select
               value={line.item_name}
               onChange={e => handleLineChange(line.id, 'item_name', e.target.value)}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', flex: 1, minWidth: '150px' }}
+              className="border p-2 rounded flex-1 min-w-[150px]"
             >
               <option value="">Item</option>
               {filteredItems(line).map(i => (
@@ -169,7 +201,7 @@ export function NewOrder() {
               placeholder="Rate"
               value={line.rate || ''}
               onChange={e => handleLineChange(line.id, 'rate', e.target.value)}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', width: '70px' }}
+              className="border p-2 rounded w-[70px]"
             />
 
             <input
@@ -177,13 +209,13 @@ export function NewOrder() {
               placeholder="Qty"
               value={line.weight || ''}
               onChange={e => handleLineChange(line.id, 'weight', e.target.value)}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', width: '70px' }}
+              className="border p-2 rounded w-[70px]"
             />
 
             <select
               value={line.unit}
               onChange={e => handleLineChange(line.id, 'unit', e.target.value)}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', width: '70px' }}
+              className="border p-2 rounded w-[70px]"
             >
               <option value="kg">kg</option>
               <option value="dozen">dozen</option>
@@ -191,33 +223,33 @@ export function NewOrder() {
               <option value="box">box</option>
             </select>
 
-            <span style={{ width: '60px', textAlign: 'right' }}>₹{(line.rate * line.weight).toFixed(0)}</span>
+            <span className="w-[60px] text-right">₹{(line.rate * line.weight).toFixed(0)}</span>
 
-            <button onClick={() => removeLine(line.id)} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+            <button onClick={() => removeLine(line.id)} className="text-red-600 border-none bg-none cursor-pointer text-lg">×</button>
           </div>
         ))}
-        <button onClick={addLine} style={{ color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '8px 0' }}>+ Add Item</button>
+        <button onClick={addLine} className="text-blue-600 bg-none border-none cursor-pointer text-sm py-2">+ Add Item</button>
       </div>
 
-      <div style={{ borderTop: '1px solid #ccc', paddingTop: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+      <div className="border-t border-gray-300 pt-4">
+        <div className="flex justify-between mb-2">
           <span>Current Total:</span>
           <span>₹{currentTotal.toFixed(1)}</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div className="flex justify-between mb-2">
           <span>Grand Total:</span>
           <span>₹{grandTotal.toFixed(1)}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+        <div className="flex items-center gap-4 mb-4">
           <span>Paid Now:</span>
           <input
             type="number"
             value={paid}
             onChange={e => setPaid(+e.target.value)}
-            style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', width: '100px' }}
+            className="border p-2 rounded w-24"
           />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '18px', marginBottom: '16px' }}>
+        <div className="flex justify-between font-bold text-lg mb-4">
           <span>Balance Due:</span>
           <span>₹{balanceDue.toFixed(1)}</span>
         </div>
@@ -225,13 +257,14 @@ export function NewOrder() {
           placeholder="Notes (optional)"
           value={notes}
           onChange={e => setNotes(e.target.value)}
-          style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '16px', minHeight: '60px' }}
+          className="w-full border p-2 rounded mb-4 min-h-[60px]"
         />
         <button
           onClick={handleSubmit}
-          style={{ background: '#16a34a', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px' }}
+          disabled={submitting}
+          className="bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700 disabled:opacity-50 cursor-pointer text-base"
         >
-          Save & Generate Bill
+          {submitting ? 'Saving...' : 'Save & Generate Bill'}
         </button>
       </div>
 

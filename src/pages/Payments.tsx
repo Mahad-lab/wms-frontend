@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import type { Client, Payment } from '../types';
+import { Spinner } from '../components/ui/spinner';
+import { Empty, EmptyDescription } from '../components/ui/empty';
+import { toast } from 'sonner';
 
 function today() {
   return new Date().toISOString().split('T')[0];
@@ -9,57 +12,88 @@ function today() {
 export function Payments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  function loadData() {
-    api.getPayments().then(setPayments);
-    api.getClients().then(setClients);
+  async function loadData() {
+    setLoading(true);
+    try {
+      const [paymentsData, clientsData] = await Promise.all([
+        api.getPayments(),
+        api.getClients()
+      ]);
+      setPayments(paymentsData);
+      setClients(clientsData);
+    } catch (e) {
+      toast.error('Failed to load payments');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.client_id || !form.amount) return alert('Select client and enter amount');
+    if (!form.client_id || !form.amount) {
+      toast.error('Please select a client and enter an amount');
+      return;
+    }
 
-    await api.createPayment({
-      client_id: Number(form.client_id),
-      amount: Number(form.amount),
-      payment_date: form.payment_date,
-      method: form.method,
-      reference: form.reference || undefined,
-    });
-
-    setForm({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '' });
-    setShowForm(false);
-    loadData();
+    setSubmitting(true);
+    try {
+      await api.createPayment({
+        client_id: Number(form.client_id),
+        amount: Number(form.amount),
+        payment_date: form.payment_date,
+        method: form.method,
+        reference: form.reference || undefined,
+      });
+      toast.success('Payment recorded');
+      setForm({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '' });
+      setShowForm(false);
+      loadData();
+    } catch (e) {
+      toast.error('Failed to save payment');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const totalReceived = payments.reduce((s, p) => s + p.amount, 0);
+
+  if (loading) {
+    return (
+      <div className="p-4 max-w-4xl mx-auto flex justify-center py-12">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Payments</h1>
-        <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 text-white px-4 py-2 rounded">
+        <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
           {showForm ? 'Cancel' : '+ Add Payment'}
         </button>
       </div>
 
-      <div style={{ background: '#ecfdf5', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>
+      <div className="bg-green-50 p-3 rounded mb-4">
         Total Received: <strong>₹{totalReceived.toFixed(1)}</strong>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={{ background: 'white', padding: '16px', borderRadius: '4px', marginBottom: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'grid', gap: '12px', maxWidth: '400px' }}>
+        <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-4">
+          <div className="grid gap-3 max-w-sm">
             <select
               value={form.client_id}
               onChange={e => setForm({ ...form, client_id: e.target.value })}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+              className="border p-2 rounded"
               required
             >
               <option value="">Select Client</option>
@@ -72,19 +106,19 @@ export function Payments() {
               placeholder="Amount"
               value={form.amount}
               onChange={e => setForm({ ...form, amount: e.target.value })}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+              className="border p-2 rounded"
               required
             />
             <input
               type="date"
               value={form.payment_date}
               onChange={e => setForm({ ...form, payment_date: e.target.value })}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+              className="border p-2 rounded"
             />
             <select
               value={form.method}
               onChange={e => setForm({ ...form, method: e.target.value })}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+              className="border p-2 rounded"
             >
               <option value="cash">Cash</option>
               <option value="online">Online</option>
@@ -95,28 +129,34 @@ export function Payments() {
               placeholder="Reference (optional)"
               value={form.reference}
               onChange={e => setForm({ ...form, reference: e.target.value })}
-              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+              className="border p-2 rounded"
             />
-            <button type="submit" style={{ background: '#16a34a', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-              Save Payment
+            <button type="submit" disabled={submitting} className="bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50">
+              {submitting ? 'Saving...' : 'Save Payment'}
             </button>
           </div>
         </form>
       )}
 
-      <div style={{ display: 'grid', gap: '8px' }}>
-        {payments.map(p => (
-          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '12px', borderRadius: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-            <div>
-              <div style={{ fontWeight: '500' }}>{p.client_name}</div>
-              <div style={{ fontSize: '12px', color: '#666' }}>
-                {p.payment_date} · {p.method}{p.reference ? ` · ${p.reference}` : ''}
+      {payments.length === 0 ? (
+        <Empty>
+          <EmptyDescription>No payments yet.</EmptyDescription>
+        </Empty>
+      ) : (
+        <div className="space-y-2">
+          {payments.map(p => (
+            <div key={p.id} className="flex justify-between items-center bg-white p-3 rounded shadow-sm">
+              <div>
+                <div className="font-medium">{p.client_name}</div>
+                <div className="text-sm text-gray-500">
+                  {p.payment_date} · {p.method}{p.reference ? ` · ${p.reference}` : ''}
+                </div>
               </div>
+              <div className="font-bold text-green-600">₹{p.amount.toFixed(1)}</div>
             </div>
-            <div style={{ fontWeight: 'bold', color: '#16a34a' }}>₹{p.amount.toFixed(1)}</div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

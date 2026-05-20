@@ -2,20 +2,26 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Client } from '../types';
+import { Spinner } from '../components/ui/spinner';
+import { Empty, EmptyDescription } from '../components/ui/empty';
 
 export function ClientLedger() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState<{ orders: any[]; payments: any[] }>({ orders: [], payments: [] });
   const [client, setClient] = useState<Client | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
-    (api.getClientLedger(+id) as any).then(setData);
-    api.getClients().then(cs => {
-      const c = cs.find(c => c.id === +id);
+    Promise.all([
+      api.getClientLedger(+id) as Promise<any>,
+      api.getClients()
+    ]).then(([ledgerData, clients]) => {
+      setData(ledgerData);
+      const c = clients.find(c => c.id === +id);
       if (c) setClient(c);
-    });
+    }).finally(() => setLoading(false));
   }, [id]);
 
   const allItems = [
@@ -35,46 +41,60 @@ export function ClientLedger() {
 
   const currentBalance = itemsWithBalance.at(-1)?.balance ?? 0;
 
+  if (loading) {
+    return (
+      <div className="p-4 max-w-4xl mx-auto flex justify-center py-12">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <button onClick={() => navigate(-1)} style={{ color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '16px' }}>← Back</button>
+      <button onClick={() => navigate(-1)} className="text-blue-600 bg-none border-none cursor-pointer mb-4 hover:underline">← Back</button>
       <h1 className="text-2xl font-bold mb-2">{client?.name || 'Client'} Ledger</h1>
-      {client?.phone && <p style={{ color: '#666', marginBottom: '16px' }}>{client.phone}</p>}
+      {client?.phone && <p className="text-gray-500 mb-4">{client.phone}</p>}
 
-      <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>
+      <div className="bg-amber-50 p-3 rounded mb-4">
         Current Balance: <strong>₹{currentBalance.toFixed(1)}</strong>
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-        <thead>
-          <tr style={{ background: '#f3f4f6' }}>
-            <th style={{ padding: '8px', textAlign: 'left' }}>Date</th>
-            <th style={{ padding: '8px', textAlign: 'left' }}>Type</th>
-            <th style={{ padding: '8px', textAlign: 'right' }}>Amount</th>
-            <th style={{ padding: '8px', textAlign: 'right' }}>Balance</th>
-          </tr>
-        </thead>
-        <tbody>
-          {itemsWithBalance.map(item => (
-            <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <td style={{ padding: '8px' }}>{item.date}</td>
-              <td style={{ padding: '8px' }}>
-                {item.type === 'order' ? (
-                  <span style={{ background: '#dbeafe', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>Order</span>
-                ) : (
-                  <span style={{ background: '#dcfce7', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>Payment</span>
-                )}
-              </td>
-              <td style={{ padding: '8px', textAlign: 'right', color: item.type === 'payment' ? '#16a34a' : '#374151' }}>
-                {item.type === 'order' ? `₹${item.current_total?.toFixed(1)}` : `-₹${item.amount.toFixed(1)}`}
-              </td>
-              <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold', color: item.balance > 0 ? '#dc2626' : '#16a34a' }}>
-                ₹{item.balance.toFixed(1)}
-              </td>
+      {itemsWithBalance.length === 0 ? (
+        <Empty>
+          <EmptyDescription>No transactions yet.</EmptyDescription>
+        </Empty>
+      ) : (
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="p-2 text-left">Date</th>
+              <th className="p-2 text-left">Type</th>
+              <th className="p-2 text-right">Amount</th>
+              <th className="p-2 text-right">Balance</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {itemsWithBalance.map(item => (
+              <tr key={item.id} className="border-b border-gray-200">
+                <td className="p-2">{item.date}</td>
+                <td className="p-2">
+                  {item.type === 'order' ? (
+                    <span className="bg-blue-100 px-2 py-1 rounded text-xs">Order</span>
+                  ) : (
+                    <span className="bg-green-100 px-2 py-1 rounded text-xs">Payment</span>
+                  )}
+                </td>
+                <td className="p-2 text-right text-gray-700">
+                  {item.type === 'order' ? `₹${item.current_total?.toFixed(1)}` : `-₹${item.amount.toFixed(1)}`}
+                </td>
+                <td className="p-2 text-right font-bold text-red-600">
+                  ₹{item.balance.toFixed(1)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
