@@ -51,5 +51,6 @@ export interface Payment {
   amount: number;
   payment_date: string;
   method: string;
+  note: string | undefined;
   reference?: string;
 }

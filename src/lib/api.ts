@@ -51,6 +51,6 @@ export const api = {
 
   getPayments: (p?: { client_id?: number }) =>
     req<Payment[]>(`/api/payments?${new URLSearchParams(p as any)}`),
-  createPayment: (b: { client_id: number; amount: number; payment_date: string; method: string; reference?: string }) =>
+  createPayment: (b: { client_id: number; amount: number; payment_date: string; method: string; note?: string, reference?: string, order_id?: Number|undefined }) =>
     req<Payment>('/api/payments', { method: 'POST', body: JSON.stringify(b) }),
 };
