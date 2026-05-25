@@ -26,7 +26,7 @@ export function ClientLedger() {
 
   const allItems = [
     ...data.orders.map(o => ({ ...o, date: o.order_date, type: 'order' })),
-    ...data.payments.map(p => ({ ...p, type: 'payment' }))
+    ...data.payments.map(p => ({ ...p, date: p.payment_date, type: 'payment' }))
   ].sort((a, b) => a.date.localeCompare(b.date));
 
   let runningBalance = 0;

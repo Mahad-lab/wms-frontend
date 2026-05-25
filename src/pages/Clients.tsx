@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Client } from '../types';
 import { Spinner } from '../components/ui/spinner';
@@ -6,6 +7,7 @@ import { Empty, EmptyDescription } from '../components/ui/empty';
 import { toast } from 'sonner';
 
 export function Clients() {
+  const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +136,10 @@ export function Clients() {
                 <div className={`font-bold ${(c.current_balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
                   ₹{(c.current_balance || 0).toFixed(1)}
                 </div>
-                <button onClick={() => startEdit(c)} className="text-blue-600 text-sm">Edit</button>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => navigate(`/ledger/${c.id}`)} className="text-blue-600 text-sm">Ledger</button>
+                  <button onClick={() => startEdit(c)} className="text-blue-600 text-sm">Edit</button>
+                </div>
               </div>
             </div>
           ))}

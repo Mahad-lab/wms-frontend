@@ -14,6 +14,7 @@ export function Payments() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [orders, setOrders] = useState<{ id: number; client_name: string }[]>([]);
   const [form, setForm] = useState({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '', note: '', order_id: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -49,23 +50,61 @@ export function Payments() {
 
     setSubmitting(true);
     try {
-      await api.createPayment({
-        client_id: Number(form.client_id),
-        amount: Number(form.amount),
-        payment_date: form.payment_date,
-        method: form.method,
-        reference: form.reference || undefined,
-        note: form.note || undefined,
-        order_id: form.order_id ? Number(form.order_id) : undefined,
-      });
-      toast.success('Payment recorded');
+      if (editingId) {
+        await api.editPayment(editingId, {
+          client_id: Number(form.client_id),
+          amount: Number(form.amount),
+          payment_date: form.payment_date,
+          method: form.method,
+          reference: form.reference || undefined,
+          note: form.note || undefined,
+        });
+        toast.success('Payment updated');
+      } else {
+        await api.createPayment({
+          client_id: Number(form.client_id),
+          amount: Number(form.amount),
+          payment_date: form.payment_date,
+          method: form.method,
+          reference: form.reference || undefined,
+          note: form.note || undefined,
+          order_id: form.order_id ? Number(form.order_id) : undefined,
+        });
+        toast.success('Payment recorded');
+      }
       setForm({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '', note: '', order_id: '' });
       setShowForm(false);
+      setEditingId(null);
       loadData();
     } catch (e) {
-      toast.error('Failed to save payment');
+      toast.error(editingId ? 'Failed to update payment' : 'Failed to save payment');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function startEdit(p: Payment) {
+    setForm({
+      client_id: String(p.client_id),
+      amount: String(p.amount),
+      payment_date: p.payment_date,
+      method: p.method,
+      reference: p.reference || '',
+      note: p.note || '',
+      order_id: '',
+    });
+    setEditingId(p.id);
+    setShowForm(true);
+  }
+
+  async function deletePayment(id: number) {
+    if (!confirm('Delete this payment?')) return;
+    try {
+      await api.deletePayment(id);
+      toast.success('Payment deleted');
+      loadData();
+    } catch (e) {
+      toast.error('Failed to delete payment');
     }
   }
 
@@ -83,8 +122,9 @@ export function Payments() {
     <div className="p-4 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Payments</h1>
-        <button onClick={() => setShowForm(!showForm)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-          {showForm ? 'Cancel' : '+ Add Payment'}
+        <button onClick={() => { setShowForm(!showForm); setEditingId(null); setForm({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '', note: '', order_id: '' }); }}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+          {editingId ? 'Cancel Edit' : (showForm ? 'Cancel' : '+ Add Payment')}
         </button>
       </div>
 
@@ -143,18 +183,20 @@ export function Payments() {
               onChange={e => setForm({ ...form, note: e.target.value })}
               className="border p-2 rounded"
             />
-            <select
-              value={form.order_id}
-              onChange={e => setForm({ ...form, order_id: e.target.value })}
-              className="border p-2 rounded"
-            >
-              <option value="">No specific order</option>
-              {orders.map(o => (
-                <option key={o.id} value={o.id}>Order #{o.id} - {o.client_name}</option>
-              ))}
-            </select>
+            {!editingId && (
+              <select
+                value={form.order_id}
+                onChange={e => setForm({ ...form, order_id: e.target.value })}
+                className="border p-2 rounded"
+              >
+                <option value="">No specific order</option>
+                {orders.map(o => (
+                  <option key={o.id} value={o.id}>Order #{o.id} - {o.client_name}</option>
+                ))}
+              </select>
+            )}
             <button type="submit" disabled={submitting} className="bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50">
-              {submitting ? 'Saving...' : 'Save Payment'}
+              {submitting ? 'Saving...' : (editingId ? 'Update Payment' : 'Save Payment')}
             </button>
           </div>
         </form>
@@ -174,7 +216,11 @@ export function Payments() {
                   {p.payment_date} · {p.method}{p.reference ? ` · ${p.reference}` : ''}
                 </div>
               </div>
-              <div className="font-bold text-green-600">₹{p.amount.toFixed(1)}</div>
+              <div className="flex items-center gap-3">
+                <div className="font-bold text-green-600">₹{p.amount.toFixed(1)}</div>
+                <button onClick={() => startEdit(p)} className="text-blue-600 text-sm">Edit</button>
+                <button onClick={() => deletePayment(p.id)} className="text-red-600 text-sm">Delete</button>
+              </div>
             </div>
           ))}
         </div>
