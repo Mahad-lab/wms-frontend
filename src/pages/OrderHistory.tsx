@@ -109,7 +109,9 @@ export function OrderHistory() {
                 <div className="text-sm text-gray-500">{o.order_date}</div>
               </div>
               <div className="text-right">
-                <div>Total: ₹{o.grand_total.toFixed(1)}</div>
+                <div className="text-sm text-gray-500">Order: ₹{o.current_total?.toFixed(1) ?? o.grand_total.toFixed(1)}</div>
+                <div className="font-medium">Till: ₹{o.balance_due.toFixed(1)}</div>
+                {o.balance_due <= 0 && <div className="text-sm text-green-600">Paid</div>}
               </div>
               <div className="flex gap-2 items-center">
                 {editingPayment === o.id ? (

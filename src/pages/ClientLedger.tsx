@@ -32,7 +32,8 @@ export function ClientLedger() {
   let runningBalance = 0;
   const itemsWithBalance = allItems.map(item => {
     if (item.type === 'order') {
-      runningBalance = item.balance_due;
+      runningBalance += item.current_total;
+      runningBalance -= item.paid;
     } else {
       runningBalance -= item.amount;
     }

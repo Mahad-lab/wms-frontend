@@ -14,7 +14,8 @@ export function Payments() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '' });
+  const [orders, setOrders] = useState<{ id: number; client_name: string }[]>([]);
+  const [form, setForm] = useState({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '', note: '', order_id: '' });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -24,12 +25,14 @@ export function Payments() {
   async function loadData() {
     setLoading(true);
     try {
-      const [paymentsData, clientsData] = await Promise.all([
+      const [paymentsData, clientsData, ordersData] = await Promise.all([
         api.getPayments(),
-        api.getClients()
+        api.getClients(),
+        api.getOrders()
       ]);
       setPayments(paymentsData);
       setClients(clientsData);
+      setOrders(ordersData.map((o: any) => ({ id: o.id, client_name: o.client_name })));
     } catch (e) {
       toast.error('Failed to load payments');
     } finally {
@@ -52,9 +55,11 @@ export function Payments() {
         payment_date: form.payment_date,
         method: form.method,
         reference: form.reference || undefined,
+        note: form.note || undefined,
+        order_id: form.order_id ? Number(form.order_id) : undefined,
       });
       toast.success('Payment recorded');
-      setForm({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '' });
+      setForm({ client_id: '', amount: '', payment_date: today(), method: 'cash', reference: '', note: '', order_id: '' });
       setShowForm(false);
       loadData();
     } catch (e) {
@@ -131,6 +136,23 @@ export function Payments() {
               onChange={e => setForm({ ...form, reference: e.target.value })}
               className="border p-2 rounded"
             />
+            <input
+              type="text"
+              placeholder="Note (optional)"
+              value={form.note}
+              onChange={e => setForm({ ...form, note: e.target.value })}
+              className="border p-2 rounded"
+            />
+            <select
+              value={form.order_id}
+              onChange={e => setForm({ ...form, order_id: e.target.value })}
+              className="border p-2 rounded"
+            >
+              <option value="">No specific order</option>
+              {orders.map(o => (
+                <option key={o.id} value={o.id}>Order #{o.id} - {o.client_name}</option>
+              ))}
+            </select>
             <button type="submit" disabled={submitting} className="bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50">
               {submitting ? 'Saving...' : 'Save Payment'}
             </button>
