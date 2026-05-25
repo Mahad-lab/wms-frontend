@@ -43,6 +43,8 @@ export const api = {
 
   createOrder: (b: { client_id: number; order_date: string; paid: number; notes?: string; lines: any[] }) =>
     req<Order>('/api/orders', { method: 'POST', body: JSON.stringify(b) }),
+  updateOrder: (id: number, b: { client_id: number; order_date: string; paid: number; notes?: string; lines: any[] }) =>
+    req<Order>(`/api/orders/${id}`, { method: 'PUT', body: JSON.stringify(b) }),
   getOrder: (id: number) => req<Order>(`/api/orders/${id}`),
   getOrders: (p?: { client_id?: number; from?: string; to?: string }) =>
     req<Order[]>(`/api/orders?${new URLSearchParams(p as any)}`),
@@ -53,4 +55,8 @@ export const api = {
     req<Payment[]>(`/api/payments?${new URLSearchParams(p as any)}`),
   createPayment: (b: { client_id: number; amount: number; payment_date: string; method: string; note?: string, reference?: string, order_id?: Number|undefined }) =>
     req<Payment>('/api/payments', { method: 'POST', body: JSON.stringify(b) }),
+  editPayment: (id: number, b: { client_id: number; amount: number; payment_date: string; method: string; note?: string; reference?: string }) =>
+    req<Payment>(`/api/payments/${id}`, { method: 'PUT', body: JSON.stringify(b) }),
+  deletePayment: (id: number) =>
+    req(`/api/payments/${id}`, { method: 'DELETE' }),
 };

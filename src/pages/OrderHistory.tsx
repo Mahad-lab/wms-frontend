@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Order } from '../types';
 import { BillPreview } from '../components/BillPreview';
@@ -7,6 +8,7 @@ import { Empty, EmptyDescription } from '../components/ui/empty';
 import { toast } from 'sonner';
 
 export function OrderHistory() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [clients, setClients] = useState<{ id: number; name: string }[]>([]);
   const [filters, setFilters] = useState({ client_id: '', from: '', to: '' });
@@ -129,6 +131,7 @@ export function OrderHistory() {
                 ) : (
                   <button onClick={() => { setEditingPayment(o.id); setPaymentAmount(String(o.paid)); }} className="text-blue-600 text-sm">Update Payment</button>
                 )}
+                <button onClick={() => navigate(`/edit-order/${o.id}`)} className="text-blue-600 text-sm">Edit</button>
                 <button onClick={() => viewOrder(o)} className="text-blue-600 text-sm">View</button>
               </div>
             </div>

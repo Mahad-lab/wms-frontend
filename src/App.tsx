@@ -56,6 +56,7 @@ function AppContent() {
         <Route path="/items" element={<Items />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/orders" element={<OrderHistory />} />
+        <Route path="/edit-order/:id" element={<NewOrder />} />
         <Route path="/ledger/:id" element={<ClientLedger />} />
         <Route path="/payments" element={<Payments />} />
       </Routes>

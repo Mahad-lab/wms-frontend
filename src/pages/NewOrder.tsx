@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Client, Item, Category, Order } from '../types';
 import { BillPreview } from '../components/BillPreview';
@@ -10,6 +11,9 @@ function today() {
 }
 
 export function NewOrder() {
+  const { id: editId } = useParams();
+  const isEditing = !!editId;
+
   const [clients, setClients] = useState<Client[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -24,6 +28,18 @@ export function NewOrder() {
   const [oldBalance, setOldBalance] = useState(0);
   const [notes, setNotes] = useState('');
 
+  const clientRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (clientRef.current && !clientRef.current.contains(e.target as Node)) {
+        setShowClientList(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [savedOrder, setSavedOrder] = useState<Order | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -31,11 +47,30 @@ export function NewOrder() {
     Promise.all([
       api.getClients(),
       api.getItems(),
-      api.getCategories()
-    ]).then(([clientsData, itemsData, categoriesData]) => {
+      api.getCategories(),
+      isEditing ? api.getOrder(Number(editId)) : Promise.resolve(null),
+    ]).then(([clientsData, itemsData, categoriesData, order]) => {
       setClients(clientsData);
       setItems(itemsData);
       setCategories(categoriesData);
+      if (order) {
+        const o = order as Order;
+        setClientId(o.client_id);
+        setClientSearch(o.client_name);
+        setOrderDate(o.order_date);
+        setPaid(o.paid);
+        setNotes(o.notes || '');
+        if (o.lines && o.lines.length > 0) {
+          setLines(o.lines.map((l, i) => ({
+            item_name: l.item_name,
+            category: l.category,
+            rate: l.rate,
+            weight: l.weight,
+            unit: l.unit,
+            id: Date.now() + i,
+          })));
+        }
+      }
     }).finally(() => setLoading(false));
   }, []);
 
@@ -85,7 +120,7 @@ export function NewOrder() {
 
     setSubmitting(true);
     try {
-      const order = await api.createOrder({
+      const payload = {
         client_id: clientId,
         order_date: orderDate,
         paid,
@@ -98,12 +133,20 @@ export function NewOrder() {
           unit: l.unit,
           sort_order: i,
         })),
-      });
-      setSavedOrder(order);
-      toast.success('Order created successfully');
-      resetForm();
+      };
+
+      if (isEditing) {
+        const order = await api.updateOrder(Number(editId), payload);
+        setSavedOrder(order);
+        toast.success('Order updated successfully');
+      } else {
+        const order = await api.createOrder(payload);
+        setSavedOrder(order);
+        toast.success('Order created successfully');
+        resetForm();
+      }
     } catch (e) {
-      toast.error('Failed to create order');
+      toast.error(isEditing ? 'Failed to update order' : 'Failed to create order');
     } finally {
       setSubmitting(false);
     }
@@ -168,10 +211,10 @@ export function NewOrder() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">New Order</h1>
+      <h1 className="text-2xl font-bold mb-4">{isEditing ? 'Edit Order' : 'New Order'}</h1>
 
       <div className="flex gap-4 mb-4 flex-wrap">
-        <div className="relative flex-1 min-w-[150px]">
+        <div className="relative flex-1 min-w-[150px]" ref={clientRef}>
           <input
             type="text"
             placeholder="Search client..."
@@ -306,7 +349,7 @@ export function NewOrder() {
           disabled={submitting}
           className="bg-green-600 text-white px-6 py-3 rounded hover:bg-green-700 disabled:opacity-50 cursor-pointer text-base"
         >
-          {submitting ? 'Saving...' : 'Save & Generate Bill'}
+          {submitting ? 'Saving...' : (isEditing ? 'Update Order' : 'Save & Generate Bill')}
         </button>
       </div>
 
