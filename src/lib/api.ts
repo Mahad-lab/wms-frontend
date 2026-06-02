@@ -40,6 +40,10 @@ export const api = {
 
   createItem: (b: { name: string; category_id?: number; default_unit?: string }) =>
     req<Item>('/api/items', { method: 'POST', body: JSON.stringify(b) }),
+  updateItem: (id: number, b: { name: string; category_id?: number | null; default_unit?: string }) =>
+    req(`/api/items/${id}`, { method: 'PUT', body: JSON.stringify(b) }),
+  deleteItem: (id: number) =>
+    req(`/api/items/${id}`, { method: 'DELETE' }),
 
   createOrder: (b: { client_id: number; order_date: string; paid: number; notes?: string; lines: any[] }) =>
     req<Order>('/api/orders', { method: 'POST', body: JSON.stringify(b) }),

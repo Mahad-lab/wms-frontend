@@ -41,17 +41,10 @@ export function Items() {
     setSubmitting(true);
     try {
       if (form.id) {
-        await fetch(`/api/items/${form.id}`, {
-          method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            name: form.name,
-            category_id: form.category_id || null,
-            default_unit: form.default_unit,
-          })
+        await api.updateItem(form.id, {
+          name: form.name,
+          category_id: form.category_id || null,
+          default_unit: form.default_unit,
         });
         toast.success('Item updated');
       } else {
@@ -85,10 +78,7 @@ export function Items() {
   async function deleteItem(id: number) {
     if (!confirm('Delete this item?')) return;
     try {
-      await fetch(`/api/items/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
+      await api.deleteItem(id);
       toast.success('Item deleted');
       loadData();
     } catch (e) {
